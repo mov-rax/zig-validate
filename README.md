@@ -27,7 +27,7 @@ pub fn validate = @import("validate");
 /// Generic Iterable Validator
 pub fn Iterable(comptime Target: type) type {
     return struct {
-        pub const _next = (fn (*@This()) Target.Output);
+        pub const next = (fn (*@This()) Target.Output);
         pub fn printNext(self: *Target) void {
             std.log.info("{}", .{self.next()});
         }
@@ -38,9 +38,9 @@ pub fn Iterable(comptime Target: type) type {
 pub fn genericFunction(iter: anytype) void {
     const IterType = @TypeOf(iter);
     const Iter = validate.ValidateWith(IterType, Iterable(IterType));
-    const a = Iter.next(&iter) * 2;
+    const a = Iter.Target.next(&iter) * 2;
     std.log.info("{}", .{a});
-    Iter.printNext(&a);
+    Iter.Validator.printNext(&a);
 }
 ```
 ### Now, for an explanation:
@@ -48,9 +48,7 @@ In the above code, `Iterable` defines everything that is needed to verify any ge
 
 The `Target.Output` means that it requires the `Target` to have a public declaration named `Output` whose value is a type.
 
-Requirements for functions that must be implemented by the generic type are defined as `const _functionName = functionType`. The underscore is an optional but reccommended naming scheme for type requirements due to zig limitations on namespacing, resulting in ambiguity when calling functions on the output type.
-
-_Note: requirements may have an underscore, but the name of function implementation itself in the `Target` **must not contain the underscore**._ 
+Requirements for functions that must be implemented by the generic type are defined as `const functionName = functionType`. Due to zig limitations on namespacing and in order to avoid name collisions, the definition and implementation are separated in the output type's `Validator` and `Target` declarations respectively.
 
 Default implementations can be defined in the  `Validator` just like any other `struct` in zig. However, due to the lack of overloading and namespacing limitations, they **must not be implemented** by the `Target`.
 
@@ -73,17 +71,20 @@ pub const Iterablei32 = struct{
 ```
 `Iterablei32` contains the implementation of the requirements defined in the `Iterable` validator.
 
-It contains both the public declaration named `Output` that is required by `Target.Output` in the validator, and the `next` function defined by `_next` requirement.
+It contains both the public declaration named `Output` that is required by `Target.Output` in the validator, and the `next` function defined by `next` requirement.
 
 ### But what if I want to validate against multiple validators?
 
-If multiple validators want to be used, simply do them in sequence, and have the output type be previous validation be the target of the next.
+If multiple validators want to be used, simply combine them all into a single validator using all of their namespaces.
 
 Example:
 ```zig
-const V1 = ValidateWith(Target, Validator1);
-const V2 = ValidateWith(V1, Validator2);
-const V3 = ValidateWith(V2, Validator3);
+const Validator = struct{
+    pub usingnamespace Validator1;
+    pub usingnamespace Validator2;
+    pub usingnamespace Validator3;
+};
+const V = ValidateWith(Target, Validator);
 ```
 
 ### What if I have an existing application/library that would require too much refactoring to use the output type?

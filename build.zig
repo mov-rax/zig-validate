@@ -9,7 +9,7 @@ pub fn build(b: *std.build.Builder) void {
     lib.setBuildMode(mode);
     lib.install();
 
-    const validate_tests = b.addTest("src/validate.zig");
+    const validate_tests = b.addTest("src/validateTests.zig");
     validate_tests.setBuildMode(mode);
 
     const test_step = b.step("test", "Run library tests");
