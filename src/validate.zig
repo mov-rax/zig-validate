@@ -49,8 +49,9 @@ pub fn ValidateWith(comptime Target: type, comptime Validator: type) type {
     var extractedT = utils.extract(Target, false);
     var extractedV = utils.extract(Validator, true);
     var errors: []const utils.types.AssertError = &.{};
+    if (std.meta.fields(Validator).len > 0)
+        @compileError(validator("`" ++ @typeName(Validator) ++ "`") ++ normal(" is an invalid Validator due to the number of fields being nonzero."));
     for (extractedV) |req| {
-        //@compileError(std.fmt.comptimePrint("{any}", .{req.info}));
         errors = errors ++ utils.assertIsConforming(.{ .name = @typeName(Validator), .type = Validator }, .{ .name = @typeName(Target), .type = Target }, req, extractedT);
     }
     if (errors.len != 0) {
