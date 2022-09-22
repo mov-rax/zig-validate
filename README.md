@@ -18,7 +18,10 @@ For many projects, the desired method of creating generic types is to do either 
 
 __Zig-Validate__ provides a non-obtrusive solution to all of those problems with a simple-to-use interface and a rich error reporting solution for relaying to the user issues with non-conforming generic types.
 
-[img](images/error_example.png)
+The following is a taste of the error-reporting capabilities of **Zig-Validate**:
+<p align="center">
+<img src="images/error_example.png">
+</p>
 
 All that is required to use in order to harness the power of compile-time type varification is a single function: `ValidateWith`.
 
