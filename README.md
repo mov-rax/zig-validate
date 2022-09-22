@@ -18,13 +18,15 @@ For many projects, the desired method of creating generic types is to do either 
 
 __Zig-Validate__ provides a non-obtrusive solution to all of those problems with a simple-to-use interface and a rich error reporting solution for relaying to the user issues with non-conforming generic types.
 
+[img](images/error_example.png)
+
 All that is required to use in order to harness the power of compile-time type varification is a single function: `ValidateWith`.
 
 The following is an example that shows the simplicity in using this library:
 
 ```zig
 pub fn validate = @import("validate");
-/// Generic Iterable Validator
+/// Generic Validator
 pub fn Iterable(comptime Target: type) type {
     return struct {
         pub const next = (fn (*@This()) Target.Output);
@@ -72,6 +74,29 @@ pub const Iterablei32 = struct{
 `Iterablei32` contains the implementation of the requirements defined in the `Iterable` validator.
 
 It contains both the public declaration named `Output` that is required by `Target.Output` in the validator, and the `next` function defined by `next` requirement.
+
+### Other ways of writing Validators?
+
+There is! There is no need for a generic function that returns a `Validator`, as the validator can be a concrete type:
+
+```zig
+pub const ConcreteValidator = struct{
+    pub const doSomething = (fn(@This()) void);
+    pub const saySomething = (fn(@This(), []const u8) void);
+}
+```
+
+In **zig-validate**, what would normally be `T` in `func(comptime T: type)` can be represented by `@This()`, as a
+validator is not a type that will be used, but rather a declarative representation of another type, there is no ambiguity.
+
+Also, due to the fact that validators can be a concrete type, **they can also be defined inline** in a `validateWith` call:
+
+```zig
+const Result = validateWith(Target, struct{
+    pub const first = (fn(*@This()) i32);
+    pub const second = (fn(*@This()) i32);
+});
+```
 
 ### But what if I want to validate against multiple validators?
 

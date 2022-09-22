@@ -64,6 +64,35 @@ pub fn ValidateWith(comptime Target: type, comptime Validator: type) type {
     return genStruct(Target, Validator);
 }
 
+pub fn ValidationResult(comptime T: type) type {
+    return union(enum) {
+        ok: T,
+        err: []const u8,
+    };
+}
+
+pub fn ValidateWithTesting(comptime Target: type, comptime Validator: type) ValidationResult(genStruct(Target, Validator)) {
+    const target = utils.colors.target;
+    const validator = utils.colors.validator;
+    const normal = utils.colors.normal;
+    var extractedT = utils.extract(Target, false);
+    var extractedV = utils.extract(Validator, true);
+    var errors: []const utils.types.AssertError = &.{};
+    if (std.meta.fields(Validator).len > 0)
+        @compileError(validator("`" ++ @typeName(Validator) ++ "`") ++ normal(" is an invalid Validator due to the number of fields being nonzero."));
+    for (extractedV) |req| {
+        errors = errors ++ utils.assertIsConforming(.{ .name = @typeName(Validator), .type = Validator }, .{ .name = @typeName(Target), .type = Target }, req, extractedT);
+    }
+    if (errors.len != 0) {
+        var res: []const u8 = std.fmt.comptimePrint(target("`{s}`") ++ normal(" does not conform to ") ++ validator("`{s}`") ++ "\n", .{ @typeName(Target), @typeName(Validator) });
+        for (errors) |err, i| {
+            res = res ++ target(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
+        }
+        return .{ .err = res };
+    }
+    return .{ .ok = genStruct(Target, Validator) };
+}
+
 fn genStruct(comptime T: type, comptime V: type) type {
     return struct {
         pub const Target = T;

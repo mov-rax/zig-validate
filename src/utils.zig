@@ -202,9 +202,9 @@ pub fn assertIsConforming(comptime Validator: types.ValidationStruct, comptime T
         }
 
         // Figure out which types are erroneous.
-        var errTypes: [t.info.Fn.args.len]?type = undefined;
-        for (t.info.Fn.args) |param, i| {
-            const vargs = ValidatorReq.info.Fn.args;
+        var errTypes: [t.info.Fn.args.len + 1]?type = undefined;
+        for (t.info.Fn.args ++ &[_]std.builtin.Type.Fn.Param{.{ .is_generic = false, .is_noalias = false, .arg_type = t.info.Fn.return_type }}) |param, i| {
+            const vargs = ValidatorReq.info.Fn.args ++ &[_]std.builtin.Type.Fn.Param{.{ .is_generic = false, .is_noalias = false, .arg_type = ValidatorReq.info.Fn.return_type }};
             // anytype as a parameter
             if (vargs[i].is_generic and param.is_generic) {
                 errTypes[i] = null;
@@ -216,15 +216,15 @@ pub fn assertIsConforming(comptime Validator: types.ValidationStruct, comptime T
                 continue;
             }
             // general checking if type is the same.
-            if (ValidatorReq.info.Fn.args[i].arg_type.? != param.arg_type.?) {
-                errTypes[i] = ValidatorReq.info.Fn.args[i].arg_type;
+            if (vargs[i].arg_type.? != param.arg_type.?) {
+                errTypes[i] = vargs[i].arg_type;
             } else {
                 errTypes[i] = null;
                 continue;
             }
         }
-        const returnTypeErr: ?type = if (t.info.Fn.return_type.? != ValidatorReq.info.Fn.return_type.?) ValidatorReq.info.Fn.return_type else null;
-        if (genFunctionStr(t, errTypes ++ &[_]?type{returnTypeErr})) |str| {
+        //const returnTypeErr: ?type = if (t.info.Fn.return_type.? != ValidatorReq.info.Fn.return_type.?) ValidatorReq.info.Fn.return_type else null;
+        if (genFunctionStr(t, &errTypes)) |str| {
             errors = errors ++ &[_]types.AssertError{.{ .desc = str }};
         }
     }
