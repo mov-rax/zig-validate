@@ -64,6 +64,11 @@ pub fn ValidateWith(comptime Target: type, comptime Validator: type) type {
     return genStruct(Target, Validator);
 }
 
+pub fn validateWithMerged(comptime Target: type, comptime Validator: type) utils.StructMerge(Validator, Target) {
+    _ = ValidateWith(Target, Validator);
+    return utils.StructMerge(Validator, Target){};
+}
+
 pub fn ValidationResult(comptime T: type) type {
     return union(enum) {
         ok: T,

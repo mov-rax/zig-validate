@@ -233,3 +233,69 @@ pub fn assertIsConforming(comptime Validator: types.ValidationStruct, comptime T
     }
     return errors;
 }
+
+/// Merges two structs together. Declarations become comptime fields. Fields disappear.
+/// NOTE: References to @This() remain unchanged.
+pub fn StructMerge(comptime T: type, comptime R: type) type {
+    const StructField = std.builtin.Type.StructField;
+    const Declaration = std.builtin.Type.Declaration;
+    // const Tfields: []const StructField = @typeInfo(T).Struct.fields;
+    // const Rfields: []const StructField = @typeInfo(R).Struct.fields;
+    const Tdecls = std.meta.declarations(T);
+    const Rdecls = std.meta.declarations(R);
+
+    const MergeDecl = struct {
+        name: []const u8,
+        parent_type: type,
+        is_pub: bool,
+
+        pub fn from(comptime decl: Declaration, comptime Parent: type) @This() {
+            return .{
+                .name = decl.name,
+                .parent_type = Parent,
+                .is_pub = decl.is_pub,
+            };
+        }
+    };
+
+    var decls: []const MergeDecl = &.{};
+    //var fields: []const StructField = &.{};
+
+    outerloop: for (Tdecls) |td| {
+        for (Rdecls) |rd| {
+            if (std.mem.eql(u8, td.name, rd.name) or !td.is_pub) {
+                continue :outerloop;
+            }
+        }
+        decls = decls ++ &[_]MergeDecl{MergeDecl.from(td, T)};
+    }
+    for (Rdecls) |rd| {
+        if (rd.is_pub)
+            decls = decls ++ &[_]MergeDecl{MergeDecl.from(rd, R)};
+    }
+
+    // for (Tfields) |tf| {
+    //     for (Rfields) |rf| {
+    //         if (std.mem.eql(u8, tf.name, rf.name)) {
+    //             @compileError("Fields cannot be overridden.");
+    //         }
+    //     }
+    // }
+    //fields = Rfields ++ Tfields;
+
+    // for (fields) |f| {
+    //     for (decls) |d| {
+    //         if (std.mem.eql(u8, f.name, d.name)) {
+    //             @compileError("Fields cannot have same name as Declarations.");
+    //         }
+    //     }
+    // }
+
+    var newFields: []const StructField = &.{};
+
+    for (decls) |d| {
+        newFields = newFields ++ &[_]StructField{.{ .name = d.name, .field_type = @TypeOf(@field(d.parent_type, d.name)), .default_value = &@field(d.parent_type, d.name), .is_comptime = true, .alignment = @alignOf(@TypeOf(@field(d.parent_type, d.name))) }};
+    }
+
+    return @Type(.{ .Struct = .{ .layout = .Auto, .fields = newFields, .decls = &.{}, .is_tuple = false } });
+}

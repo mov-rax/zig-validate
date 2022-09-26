@@ -37,6 +37,13 @@ test "Generic Validator" {
     Iter.Validator.printNext(&iter);
 }
 
+test "Generic Validator Merged" {
+    const Iter = validate.validateWithMerged(IterableInt, Iterable(IterableInt));
+    var iter = IterableInt{ .current = 0 };
+    try std.testing.expect(Iter.next(&iter) == 1);
+    Iter.printNext(&iter);
+}
+
 /// sum iterator until it reaches the target value.
 fn sumIterT(comptime T: type, iter: *T, target: i32) i32 {
     const Iter = validate.ValidateWith(T, Iterable(T));
@@ -86,9 +93,26 @@ fn genericSumIter(iterRef: anytype, target: Deref(@TypeOf(iterRef)).Output) Dere
     return sum;
 }
 
+fn genericSumIterMerged(iterRef: anytype, target: Deref(@TypeOf(iterRef)).Output) Deref(@TypeOf(iterRef)).Output {
+    const Type = Deref(@TypeOf(iterRef));
+    const iter = validate.validateWithMerged(Type, Iterable(Type));
+    var sum: Type.Output = 0;
+    var curr: Type.Output = iter.next(iterRef);
+    while (curr < target) : (curr = iter.next(iterRef)) {
+        sum += curr;
+    }
+    return sum;
+}
+
 test "genericSumIter example" {
     var iter = IterableInt{ .current = 10 };
-    const result = sumIter(&iter, 36);
+    const result = genericSumIter(&iter, 36);
+    try std.testing.expectEqual(result, 575);
+}
+
+test "genericSumIterMerged example" {
+    var iter = IterableInt{ .current = 10 };
+    const result = genericSumIterMerged(&iter, 36);
     try std.testing.expectEqual(result, 575);
 }
 
@@ -120,6 +144,14 @@ test "Concrete Validator" {
     try std.testing.expect(Iter.Validator.validator() == 21);
 }
 
+test "Concrete Validator Merged" {
+    const iface = validate.validateWithMerged(ConcreteIterableInt, ConcreteIterable);
+    var iter = ConcreteIterableInt{ .current = 1 };
+    try std.testing.expect(iface.next(&iter) == 2);
+    try std.testing.expect(iface.concrete(&iter) == 4);
+    try std.testing.expect(iface.validator() == 21);
+}
+
 fn Addable(comptime T: type) type {
     return struct {
         pub const add = fn (T, T) T;
@@ -143,7 +175,7 @@ test "Example Validation" {
     const Inline = struct {
         pub fn ExampleValidator(comptime T: type) type {
             return struct {
-                const magic = (fn (T, i32.i64, f32) f32);
+                const magic = (fn (T, i32, i64, f32) f32);
                 const wonder = (fn ([]const u8, []const usize) usize);
             };
         }
@@ -197,4 +229,52 @@ test "Inline Validator" {
     };
     var target = Inline.ExampleTarget{ .val = 1 };
     Inline.example(target);
+}
+
+test "Function Overloading" {
+    const Inline = struct {
+        pub fn Animal(comptime T: type) type {
+            return struct {
+                const getName = fn (*@This()) []const u8;
+                const getAge = fn (*T) usize;
+
+                // override
+                pub fn getStructName() []const u8 {
+                    return "Animal";
+                }
+
+                pub fn family() []const u8 {
+                    return "Animalia";
+                }
+                // override
+                pub fn speak() []const u8 {
+                    return "???";
+                }
+            };
+        }
+
+        pub const Human = struct {
+            name: []const u8,
+            age: usize,
+            pub fn getName(self: *@This()) []const u8 {
+                return self.name;
+            }
+            pub fn getStructName() []const u8 {
+                return "Human";
+            }
+            pub fn getAge(self: *@This()) usize {
+                return self.age;
+            }
+            pub fn speak() []const u8 {
+                return "Hello";
+            }
+        };
+    };
+
+    const iface = validate.validateWithMerged(Inline.Human, Inline.Animal(Inline.Human));
+    var hooman = Inline.Human{ .name = "Bob", .age = 21 };
+    try std.testing.expectEqualStrings(iface.getName(&hooman), "Bob");
+    try std.testing.expectEqual(iface.getAge(&hooman), 21);
+    try std.testing.expectEqualStrings(iface.getStructName(), "Human");
+    try std.testing.expectEqualStrings(iface.family(), "Animalia");
 }
