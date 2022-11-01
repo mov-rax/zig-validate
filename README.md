@@ -4,6 +4,8 @@
 
 ---
 
+> Note: minimum zig version 0.10.0 using the stage2 compiler is required to use zig-validate.
+
 For many projects, the desired method of creating generic types is to do either of the following:
 
 1. Use a concrete type that results in code bloat due to repetitiveness.
@@ -23,102 +25,22 @@ The following is a taste of the error-reporting capabilities of **Zig-Validate**
 <img src="images/error_example.png">
 </p>
 
-All that is required to use in order to harness the power of compile-time type varification is a single function: `ValidateWith`.
+---
 
-The following is an example that shows the simplicity in using this library:
+### Static _and_ Dynamic dispatch?
+Yes, static and dynamic dispatch implementations are available in __zig-validate__ with two different flavors of static dispatch!
 
-```zig
-pub fn validate = @import("validate");
-/// Generic Validator
-pub fn Iterable(comptime Target: type) type {
-    return struct {
-        pub const next = (fn (*@This()) Target.Output);
-        pub fn printNext(self: *Target) void {
-            std.log.info("{}", .{self.next()});
-        }
-    };
-}
+For your statically-dispatched needs there is the more _vanilla_ `ValidateWith`, and the more powerful and ergonomic `validateWithMerged` that supports _function overloading_!
 
-/// Function that validates `iter`'s type against Iterable
-pub fn genericFunction(iter: anytype) void {
-    const IterType = @TypeOf(iter);
-    const Iter = validate.ValidateWith(IterType, Iterable(IterType));
-    const a = Iter.Target.next(&iter) * 2;
-    std.log.info("{}", .{a});
-    Iter.Validator.printNext(&a);
-}
-```
-### Now, for an explanation:
-In the above code, `Iterable` defines everything that is needed to verify any generic type. 
+If you require a more _dynamic_ approach, there exists `utils.vtableify` to easily generate vtables!
 
-The `Target.Output` means that it requires the `Target` to have a public declaration named `Output` whose value is a type.
-
-Requirements for functions that must be implemented by the generic type are defined as `const functionName = functionType`. Due to zig limitations on namespacing and in order to avoid name collisions, the definition and implementation are separated in the output type's `Validator` and `Target` declarations respectively.
-
-Default implementations can be defined in the  `Validator` just like any other `struct` in zig. However, due to the lack of overloading and namespacing limitations, they **must not be implemented** by the `Target`.
-
-The `Validator` **can not have any fields**, as the `Target` cannot also access those fields due to limitations in zig's metaprogramming abilities. Thus, **the `Validator` can only contain declarations.**
-
-### So, how do we create a type that will be validated?
-
-The following showcases the implementation of a type that conforms to the requirements of the `Iterable` validator above:
-
-```zig
-pub const Iterablei32 = struct{
-    pub const Output = i32;
-    current: Output,
-
-    pub fn next(self: *@This()) Output {
-        self.current += 1;
-        return current;
-    }
-};
-```
-`Iterablei32` contains the implementation of the requirements defined in the `Iterable` validator.
-
-It contains both the public declaration named `Output` that is required by `Target.Output` in the validator, and the `next` function defined by `next` requirement.
-
-### Other ways of writing Validators?
-
-There is! There is no need for a generic function that returns a `Validator`, as the validator can be a concrete type:
-
-```zig
-pub const ConcreteValidator = struct{
-    pub const doSomething = (fn(@This()) void);
-    pub const saySomething = (fn(@This(), []const u8) void);
-}
-```
-
-In **zig-validate**, what would normally be `T` in `func(comptime T: type)` can be represented by `@This()`, as a
-validator is not a type that will be used, but rather a declarative representation of another type, there is no ambiguity.
-
-Also, due to the fact that validators can be a concrete type, **they can also be defined inline** in a `validateWith` call:
-
-```zig
-const Result = validateWith(Target, struct{
-    pub const first = (fn(*@This()) i32);
-    pub const second = (fn(*@This()) i32);
-});
-```
-
-### But what if I want to validate against multiple validators?
-
-If multiple validators want to be used, simply combine them all into a single validator using all of their namespaces.
-
-Example:
-```zig
-const Validator = struct{
-    pub usingnamespace Validator1;
-    pub usingnamespace Validator2;
-    pub usingnamespace Validator3;
-};
-const V = ValidateWith(Target, Validator);
-```
+> For more information on type validation using `zig-validate`, go to the [static dispatch](https://mov-rax.github.io/zig-validate/docs/StaticDispatch.md) and/or [dynamic dispatch](https://mov-rax.github.io/zig-validate/docs/DynamicDispatch.md) page(s).
+ 
 
 ### What if I have an existing application/library that would require too much refactoring to use the output type?
 
-If you have a codebase that would require a large amount of refactoring to use the output type, then you can simply _not_ use the output type. Due to the unobtrusive nature of *zig-validate*, you can simply do `_ = validateWith(Target, Validator)` and still use the type validation power of the library. The only downside of discarding the output type is a generic trait/interface that is used to interact with generic `Target` types.
+If you have a codebase that would require a large amount of refactoring to use the output type, then you can simply _not_ use the output type. Due to the unobtrusive nature of *zig-validate*, you can simply do `_ = ValidateWith(Target, Validator)` and still use the type validation power of the library. The only downside of discarding the output type is a generic trait/interface that is used to interact with generic `Target` types.
 
 That's pretty much all that there is needed to know in order to use **zig-validate**! Now, stop writing boilerplate and bear witness to the power of **zig-validate**.
 
-Still unsure on how to use **zig-validate**? Then [Read zig-validate's documentation!](https://mov-rax.github.io/zig-validate/)
+> Still unsure on how to use **zig-validate**? Then [Read zig-validate's documentation!](https://mov-rax.github.io/zig-validate/)

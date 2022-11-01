@@ -1,6 +1,6 @@
 const std = @import("std");
 const ansi = @import("ansi.zig");
-const utils = @import("utils.zig");
+pub const utils = @import("utils.zig");
 
 /// ### Comptime validation of `Target` type by a `Validator` Type.
 /// #### Returns a type containing decls from both types.
@@ -64,6 +64,10 @@ pub fn ValidateWith(comptime Target: type, comptime Validator: type) type {
     return genStruct(Target, Validator);
 }
 
+/// Similar to ValidateWith, however with the following additions/changes:
+/// - Declarations within Target and Validator are merged into a single comptime struct
+/// - Function overloading supported. (any function in Validator can get overloaded by a similarly-named on in Target).
+/// - All declarations are turned into comptime fields as a result.
 pub fn validateWithMerged(comptime Target: type, comptime Validator: type) utils.StructMerge(Validator, Target) {
     _ = ValidateWith(Target, Validator);
     return utils.StructMerge(Validator, Target){};

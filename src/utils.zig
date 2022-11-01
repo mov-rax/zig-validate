@@ -234,6 +234,27 @@ pub fn assertIsConforming(comptime Validator: types.ValidationStruct, comptime T
     return errors;
 }
 
+pub fn VTableType(comptime T: type) type {
+    const decls = comptime std.meta.declarations(T);
+    var things: []const std.builtin.Type.StructField = &.{};
+    for (decls) |decl| {
+        const ftype = @TypeOf(&@field(T, decl.name));
+        things = things ++ &[_]std.builtin.Type.StructField{.{ .name = decl.name, .field_type = ftype, .default_value = null, .is_comptime = false, .alignment = @alignOf(ftype) }};
+    }
+    return @Type(.{ .Struct = .{ .layout = .Auto, .fields = things, .decls = &.{}, .is_tuple = false } });
+}
+
+/// Creates a vtable used for dynamic dispatch.
+pub fn vtableify(comptime VTable: type, comptime Implementation: type) VTable {
+    const Type = VTableType(Implementation);
+    const fields = @typeInfo(Type).Struct.fields;
+    var result: VTable = undefined;
+    inline for (fields) |f| {
+        @field(result, f.name) = &@field(Implementation, f.name);
+    }
+    return result;
+}
+
 /// Merges two structs together. Declarations become comptime fields. Fields disappear.
 /// NOTE: References to @This() remain unchanged.
 pub fn StructMerge(comptime T: type, comptime R: type) type {
@@ -273,23 +294,6 @@ pub fn StructMerge(comptime T: type, comptime R: type) type {
         if (rd.is_pub)
             decls = decls ++ &[_]MergeDecl{MergeDecl.from(rd, R)};
     }
-
-    // for (Tfields) |tf| {
-    //     for (Rfields) |rf| {
-    //         if (std.mem.eql(u8, tf.name, rf.name)) {
-    //             @compileError("Fields cannot be overridden.");
-    //         }
-    //     }
-    // }
-    //fields = Rfields ++ Tfields;
-
-    // for (fields) |f| {
-    //     for (decls) |d| {
-    //         if (std.mem.eql(u8, f.name, d.name)) {
-    //             @compileError("Fields cannot have same name as Declarations.");
-    //         }
-    //     }
-    // }
 
     var newFields: []const StructField = &.{};
 

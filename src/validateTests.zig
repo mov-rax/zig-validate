@@ -74,9 +74,26 @@ fn sumIter(iterRef: anytype, target: i32) i32 {
     return sum;
 }
 
+fn sumIterMerged(iterRef: anytype, target: i32) i32 {
+    const T = Deref(@TypeOf(iterRef));
+    const Iter = validate.validateWithMerged(T, Iterable(T));
+    var sum: i32 = 0;
+    var curr: i32 = Iter.next(iterRef);
+    while (curr < target) : (curr = Iter.next(iterRef)) {
+        sum += curr;
+    }
+    return sum;
+}
+
 test "sumIter example" {
     var iter = IterableInt{ .current = 10 };
     const result = sumIter(&iter, 36);
+    try std.testing.expectEqual(result, 575);
+}
+
+test "sumIterMerged example" {
+    var iter = IterableInt{ .current = 10 };
+    const result = sumIterMerged(&iter, 36);
     try std.testing.expectEqual(result, 575);
 }
 
@@ -277,4 +294,77 @@ test "Function Overloading" {
     try std.testing.expectEqual(iface.getAge(&hooman), 21);
     try std.testing.expectEqualStrings(iface.getStructName(), "Human");
     try std.testing.expectEqualStrings(iface.family(), "Animalia");
+}
+
+test "Dynamic Dispatch" {
+    const Inline = struct {
+        const Animal = struct {
+            name: *const fn (*const @This()) []const u8,
+            speak: *const fn () void,
+            age: *const fn (*const @This()) usize,
+            species: *const fn () []const u8,
+
+            pub fn oof(self: *const @This()) void {
+                std.log.warn("Name: {s}", .{self.name(self)});
+                std.log.warn("Age: {}", .{self.age(self)});
+                std.log.warn("Species: {s}", .{self.species()});
+                self.speak();
+            }
+        };
+
+        const Human = struct {
+            animal: Animal = validate.utils.vtableify(Animal, AnimalImpl),
+            age: usize,
+            name: []const u8,
+
+            const AnimalImpl = struct {
+                pub fn name(self: *const Animal) []const u8 {
+                    return @fieldParentPtr(Human, "animal", self).name;
+                }
+                pub fn speak() void {
+                    std.log.warn("I think I'm blind...", .{});
+                }
+                pub fn age(self: *const Animal) usize {
+                    return @fieldParentPtr(Human, "animal", self).age;
+                }
+                pub fn species() []const u8 {
+                    return "Human";
+                }
+            };
+        };
+
+        const Dog = struct {
+            animal: Animal = validate.utils.vtableify(Animal, AnimalImpl),
+            age: usize,
+            name: []const u8,
+
+            const AnimalImpl = struct {
+                pub fn name(self: *const Animal) []const u8 {
+                    return @fieldParentPtr(Human, "animal", self).name;
+                }
+                pub fn speak() void {
+                    std.log.warn("Woof!", .{});
+                }
+                pub fn age(self: *const Animal) usize {
+                    return @fieldParentPtr(Dog, "animal", self).age;
+                }
+                pub fn species() []const u8 {
+                    return "Dog";
+                }
+            };
+        };
+
+        fn testy(item: *const Animal) void {
+            std.log.info("Animal name: {s}", .{item.name(item)});
+            std.log.info("Animal age: {}", .{item.age(item)});
+            item.speak();
+        }
+    };
+    var dogg = Inline.Dog{ .age = 4, .name = "Woofer" };
+    var hooman = Inline.Human{ .age = 4, .name = "John Doe" };
+    var animals: [2]*Inline.Animal = (&.{ &dogg.animal, &hooman.animal }).*;
+    for (animals) |animal| {
+        animal.oof();
+        Inline.testy(animal);
+    }
 }
