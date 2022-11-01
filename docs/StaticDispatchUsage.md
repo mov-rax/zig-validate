@@ -177,3 +177,5 @@ test "Function Overloading" {
 Unlike with the `ValidateWith` function,`validateWithMerged` returns not a `type` but an instance of an anonymous struct populated with comptime fields. This creates a comptime interface that statically dispatches function calls. Being that all of the fields are `comptime`, none of them end up in the final binary, resulting in a static dispatch abstraction with no runtime cost.
 
 `validateWithMerged` takes in a `Target` and a `Validator` similarly to `ValidateWith`. However, it allows for implementations in `Validator` to be overridden in `Target`. (Currently, it allows for overriding even with different function definitions, which will be fixed in a later update).
+
+> For more examples on static dispatch and type validation in _zig-validate_ view [validateTests.zig](https://github.com/mov-rax/zig-validate/blob/main/src/validateTests.zig)
