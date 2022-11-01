@@ -34,7 +34,7 @@ For your statically-dispatched needs there is the more _vanilla_ `ValidateWith`,
 
 If you require a more _dynamic_ approach, there exists `utils.vtableify` to easily generate vtables!
 
-> For more information on type validation using `zig-validate`, go to the [static dispatch](https://mov-rax.github.io/zig-validate/docs/StaticDispatch.md) and/or [dynamic dispatch](https://mov-rax.github.io/zig-validate/docs/DynamicDispatch.md) page(s).
+> For more information on type validation using `zig-validate`, go to the [static dispatch](https://github.com/mov-rax/zig-validate/blob/main/docs/StaticDispatchUsage.md) and/or [dynamic dispatch](https://github.com/mov-rax/zig-validate/blob/main/docs/DynamicDispatch.md) page(s).
  
 
 ### What if I have an existing application/library that would require too much refactoring to use the output type?
