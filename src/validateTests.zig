@@ -340,7 +340,7 @@ test "Dynamic Dispatch" {
 
             const AnimalImpl = struct {
                 pub fn name(self: *const Animal) []const u8 {
-                    return @fieldParentPtr(Human, "animal", self).name;
+                    return @fieldParentPtr(Dog, "animal", self).name;
                 }
                 pub fn speak() void {
                     std.log.warn("Woof!", .{});
@@ -361,8 +361,8 @@ test "Dynamic Dispatch" {
         }
     };
     var dogg = Inline.Dog{ .age = 4, .name = "Woofer" };
-    var hooman = Inline.Human{ .age = 4, .name = "John Doe" };
-    var animals: [2]*Inline.Animal = (&.{ &dogg.animal, &hooman.animal }).*;
+    var hooman = Inline.Human{ .age = 42, .name = "John Doe" };
+    var animals = [2]*Inline.Animal{ &dogg.animal, &hooman.animal };
     for (animals) |animal| {
         animal.oof();
         Inline.testy(animal);
