@@ -30,16 +30,16 @@ The following is a taste of the error-reporting capabilities of **Zig-Validate**
 ### Static _and_ Dynamic dispatch?
 Yes, static and dynamic dispatch implementations are available in __zig-validate__ with two different flavors of static dispatch!
 
-For your statically-dispatched needs there is the more _vanilla_ `ValidateWith`, and the more powerful and ergonomic `validateWithMerged` that supports _function overloading_!
+For your statically-dispatched needs there is the more _vanilla_ `validate.static`, and the more powerful and ergonomic `validate.staticFnOverride` that supports _function overloading_!
 
-If you require a more _dynamic_ approach, there exists `utils.vtableify` to easily generate vtables!
+If you require a more _dynamic_ approach, there exists `validate.dynamic` to easily generate vtables!
 
 > For more information on type validation using `zig-validate`, go to the [static dispatch](https://github.com/mov-rax/zig-validate/blob/main/docs/StaticDispatchUsage.md) and/or [dynamic dispatch](https://github.com/mov-rax/zig-validate/blob/main/docs/DynamicDispatch.md) page(s).
  
 
 ### What if I have an existing application/library that would require too much refactoring to use the output type?
 
-If you have a codebase that would require a large amount of refactoring to use the output type, then you can simply _not_ use the output type. Due to the unobtrusive nature of *zig-validate*, you can simply do `_ = ValidateWith(Target, Validator)` and still use the type validation power of the library. The only downside of discarding the output type is a generic trait/interface that is used to interact with generic `Target` types.
+If you have a codebase that would require a large amount of refactoring to use the output type, then you can simply _not_ use the output type. Due to the unobtrusive nature of *zig-validate*, you can simply do `_ = validate.static(Target, Validator)` and still use the type validation power of the library. The only downside of discarding the output type is a generic trait/interface that is used to interact with generic `Target` types.
 
 That's pretty much all that there is needed to know in order to use **zig-validate**! Now, stop writing boilerplate and bear witness to the power of **zig-validate**.
 
