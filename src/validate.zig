@@ -37,40 +37,68 @@ pub const utils = @import("utils.zig");
 ///     }
 /// };
 ///
-/// const Validated = ValidateWith(Target, Validator(Target));
+/// const Validated = static(Target, Validator(Target));
 /// ```
 ///
 ///
 /// For more examples see `validateTests.zig`
-pub fn ValidateWith(comptime Target: type, comptime Validator: type) type {
-    const target = utils.colors.target;
-    const validator = utils.colors.validator;
-    const normal = utils.colors.normal;
-    var extractedT = utils.extract(Target, false);
-    var extractedV = utils.extract(Validator, true);
-    var errors: []const utils.types.AssertError = &.{};
-    if (std.meta.fields(Validator).len > 0)
-        @compileError(validator("`" ++ @typeName(Validator) ++ "`") ++ normal(" is an invalid Validator due to the number of fields being nonzero."));
-    for (extractedV) |req| {
-        errors = errors ++ utils.assertIsConforming(.{ .name = @typeName(Validator), .type = Validator }, .{ .name = @typeName(Target), .type = Target }, req, extractedT);
-    }
-    if (errors.len != 0) {
-        var res: []const u8 = std.fmt.comptimePrint(target("`{s}`") ++ normal(" does not conform to ") ++ validator("`{s}`") ++ "\n", .{ @typeName(Target), @typeName(Validator) });
-        for (errors) |err, i| {
-            res = res ++ target(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
+pub fn static(comptime Target: type, comptime Validator: type) genStruct(Target, Validator) {
+    comptime {
+        const target = utils.colors.target;
+        const validator = utils.colors.validator;
+        const normal = utils.colors.normal;
+        var extractedT = utils.extract(Target, .target);
+        var extractedV = utils.extract(Validator, .validator);
+        var errors: []const utils.types.AssertError = &.{};
+        if (std.meta.fields(Validator).len > 0)
+            @compileError(validator("`" ++ @typeName(Validator) ++ "`") ++ normal(" is an invalid Validator due to the number of fields being nonzero."));
+        for (extractedV) |req| {
+            errors = errors ++ utils.assertIsConforming(.{ .name = @typeName(Validator), .type = Validator }, .{ .name = @typeName(Target), .type = Target }, req, extractedT);
         }
-        @compileError(res);
+        if (errors.len != 0) {
+            var res: []const u8 = std.fmt.comptimePrint(target("`{s}`") ++ normal(" does not conform to ") ++ validator("`{s}`") ++ "\n", .{ @typeName(Target), @typeName(Validator) });
+            for (errors) |err, i| {
+                res = res ++ target(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
+            }
+            @compileError(res);
+        }
+        return genStruct(Target, Validator){};
     }
-    return genStruct(Target, Validator);
 }
 
 /// Similar to ValidateWith, however with the following additions/changes:
 /// - Declarations within Target and Validator are merged into a single comptime struct
 /// - Function overloading supported. (any function in Validator can get overloaded by a similarly-named on in Target).
 /// - All declarations are turned into comptime fields as a result.
-pub fn validateWithMerged(comptime Target: type, comptime Validator: type) utils.StructMerge(Validator, Target) {
-    _ = ValidateWith(Target, Validator);
-    return utils.StructMerge(Validator, Target){};
+pub fn staticFnOverride(comptime Target: type, comptime Validator: type) utils.StructMerge(Validator, Target) {
+    comptime {
+        _ = static(Target, Validator);
+        return utils.StructMerge(Validator, Target){};
+    }
+}
+
+pub fn dynamic(comptime VTable: type, comptime Implementation: type) VTable {
+    comptime {
+        const vt = utils.colors.target;
+        const impl = utils.colors.validator;
+        const normal = utils.colors.normal;
+        var extractedVT = utils.extract(VTable, .vtable);
+        var extractedI = utils.extract(Implementation, .target);
+        var errors: []const utils.types.AssertError = &.{};
+        if (std.meta.fields(Implementation).len > 0)
+            @compileError(impl("`" ++ @typeName(Implementation) ++ "`") ++ normal(" is an invalid VTable implementation due to the number of fields being nonzero."));
+        for (extractedVT) |req| {
+            errors = errors ++ utils.assertIsConforming(.{ .name = @typeName(VTable), .type = VTable }, .{ .name = @typeName(Implementation), .type = Implementation }, req, extractedI);
+        }
+        if (errors.len != 0) {
+            var res: []const u8 = std.fmt.comptimePrint(impl("`{s}`") ++ normal(" does not conform to ") ++ vt("`{s}`") ++ "\n", .{ @typeName(Implementation), @typeName(VTable) });
+            for (errors) |err, i| {
+                res = res ++ impl(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
+            }
+            @compileError(res);
+        }
+        return utils.vtableify(VTable, Implementation);
+    }
 }
 
 pub fn ValidationResult(comptime T: type) type {
@@ -80,31 +108,33 @@ pub fn ValidationResult(comptime T: type) type {
     };
 }
 
-pub fn ValidateWithTesting(comptime Target: type, comptime Validator: type) ValidationResult(genStruct(Target, Validator)) {
-    const target = utils.colors.target;
-    const validator = utils.colors.validator;
-    const normal = utils.colors.normal;
-    var extractedT = utils.extract(Target, false);
-    var extractedV = utils.extract(Validator, true);
-    var errors: []const utils.types.AssertError = &.{};
-    if (std.meta.fields(Validator).len > 0)
-        @compileError(validator("`" ++ @typeName(Validator) ++ "`") ++ normal(" is an invalid Validator due to the number of fields being nonzero."));
-    for (extractedV) |req| {
-        errors = errors ++ utils.assertIsConforming(.{ .name = @typeName(Validator), .type = Validator }, .{ .name = @typeName(Target), .type = Target }, req, extractedT);
-    }
-    if (errors.len != 0) {
-        var res: []const u8 = std.fmt.comptimePrint(target("`{s}`") ++ normal(" does not conform to ") ++ validator("`{s}`") ++ "\n", .{ @typeName(Target), @typeName(Validator) });
-        for (errors) |err, i| {
-            res = res ++ target(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
+pub fn staticTesting(comptime Target: type, comptime Validator: type) ValidationResult(genStruct(Target, Validator)) {
+    comptime {
+        const target = utils.colors.target;
+        const validator = utils.colors.validator;
+        const normal = utils.colors.normal;
+        var extractedT = utils.extract(Target, .target);
+        var extractedV = utils.extract(Validator, .validator);
+        var errors: []const utils.types.AssertError = &.{};
+        if (std.meta.fields(Validator).len > 0)
+            @compileError(validator("`" ++ @typeName(Validator) ++ "`") ++ normal(" is an invalid Validator due to the number of fields being nonzero."));
+        for (extractedV) |req| {
+            errors = errors ++ utils.assertIsConforming(.{ .name = @typeName(Validator), .type = Validator }, .{ .name = @typeName(Target), .type = Target }, req, extractedT);
         }
-        return .{ .err = res };
+        if (errors.len != 0) {
+            var res: []const u8 = std.fmt.comptimePrint(target("`{s}`") ++ normal(" does not conform to ") ++ validator("`{s}`") ++ "\n", .{ @typeName(Target), @typeName(Validator) });
+            for (errors) |err, i| {
+                res = res ++ target(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
+            }
+            return .{ .err = res };
+        }
+        return .{ .ok = genStruct(Target, Validator){} };
     }
-    return .{ .ok = genStruct(Target, Validator) };
 }
 
 fn genStruct(comptime T: type, comptime V: type) type {
     return struct {
-        pub const Target = T;
-        pub const Validator = V;
+        comptime Target: type = T,
+        comptime Validator: type = V,
     };
 }

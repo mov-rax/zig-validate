@@ -46,20 +46,20 @@ const Validator = struct{
     pub usingnamespace Validator2;
     pub usingnamespace Validator3;
 };
-const V = ValidateWith(Target, Validator);
+const V = validate.static(Target, Validator);
 ```
 
 ---
 
 ## Non-function overloading
 
-To use static dispatch without function overloading, the function to use is `validate.ValidateWith`.It takes in types `Target` and `Validator`.
+To use static dispatch without function overloading, the function to use is `validate.static`.It takes in types `Target` and `Validator`.
 
-`ValidateWith` returns a struct containing `Target` and `Validator` namespaces that contain only declarations. The `Target` contains declarations that are present in the `Target`, while `Validator` contains declarations that are present in the `Validator`. The reason for the separation are name collisions that would occur if the namespaces were merged (note that this is taken care of if function overloading is desired).
+`validate.static` returns a struct containing `Target` and `Validator` namespaces that contain only declarations. The `Target` contains declarations that are present in the `Target`, while `Validator` contains declarations that are present in the `Validator`. The reason for the separation are name collisions that would occur if the namespaces were merged (note that this is taken care of if function overloading is desired).
 
-Also take note that using the return value from `ValidateWith` is not a requirement for type validation and can be discarded.
+Also take note that using the return value from `validate.static` is not a requirement for type validation and can be discarded.
 
-The following is an example of using `ValidateWith`:
+The following is an example of using `validate.static`:
 
 ```zig
 pub fn Iterable(comptime T: type) type {
@@ -94,7 +94,7 @@ const IterableInt = struct {
 /// It uses `Deref` function from utils to find out the type of the pointee.
 fn sumIter(iterRef: anytype, target: i32) i32 {
     const T = Deref(@TypeOf(iterRef));
-    const Iter = validate.ValidateWith(T, Iterable(T));
+    const Iter = validate.static(T, Iterable(T));
     var sum: i32 = 0;
     var curr: i32 = Iter.Target.next(iterRef);
     while (curr < target) : (curr = Iter.Target.next(iterRef)) {
@@ -122,7 +122,7 @@ The `validate.utils.Deref` function extracts the base type from a pointer type. 
 
 __Zig-Validate__ also provides a version of validation that supports function overloading. This usually results in shorter, more readable code than its non-overloading variant.
 
-Below is an example showcasing function overloading using `validateWithMerged`.
+Below is an example showcasing function overloading using `validate.staticFnOverride`.
 
 ```zig
 test "Function Overloading" {
@@ -165,7 +165,7 @@ test "Function Overloading" {
         };
     };
 
-    const iface = validate.validateWithMerged(Inline.Human, Inline.Animal(Inline.Human));
+    const iface = validate.staticFnOverride(Inline.Human, Inline.Animal(Inline.Human));
     var hooman = Inline.Human{ .name = "Bob", .age = 21 };
     try std.testing.expectEqualStrings(iface.getName(&hooman), "Bob");
     try std.testing.expectEqual(iface.getAge(&hooman), 21);
@@ -174,8 +174,8 @@ test "Function Overloading" {
 }
 ```
 
-Unlike with the `ValidateWith` function,`validateWithMerged` returns not a `type` but an instance of an anonymous struct populated with comptime fields. This creates a comptime interface that statically dispatches function calls. Being that all of the fields are `comptime`, none of them end up in the final binary, resulting in a static dispatch abstraction with no runtime cost.
+`validate.staticFnOverride` returns an instance of an anonymous struct populated with comptime fields. This creates a comptime interface that statically dispatches function calls. Being that all of the fields are marked as `comptime`, none of them end up in the final binary, resulting in a static dispatch abstraction with no runtime cost.
 
-`validateWithMerged` takes in a `Target` and a `Validator` similarly to `ValidateWith`. However, it allows for implementations in `Validator` to be overridden in `Target`. (Currently, it allows for overriding even with different function definitions, which will be fixed in a later update).
+`validate.staticFnOverride` takes in a `Target` and a `Validator` similarly to `validate.static`. However, it allows for implementations in `Validator` to be overridden in `Target`. (Currently, it allows for overriding even with different function definitions, which will be fixed in a later update).
 
 > For more examples on static dispatch and type validation in _zig-validate_ view [validateTests.zig](https://github.com/mov-rax/zig-validate/blob/main/src/validateTests.zig)

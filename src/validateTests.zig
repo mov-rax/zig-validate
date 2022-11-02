@@ -31,14 +31,14 @@ const IterableInt = struct {
 };
 
 test "Generic Validator" {
-    const Iter = validate.ValidateWith(IterableInt, Iterable(IterableInt));
+    const Iter = validate.static(IterableInt, Iterable(IterableInt));
     var iter = IterableInt{ .current = 0 };
     try std.testing.expect(Iter.Target.next(&iter) == 1);
     Iter.Validator.printNext(&iter);
 }
 
 test "Generic Validator Merged" {
-    const Iter = validate.validateWithMerged(IterableInt, Iterable(IterableInt));
+    const Iter = validate.staticFnOverride(IterableInt, Iterable(IterableInt));
     var iter = IterableInt{ .current = 0 };
     try std.testing.expect(Iter.next(&iter) == 1);
     Iter.printNext(&iter);
@@ -46,7 +46,7 @@ test "Generic Validator Merged" {
 
 /// sum iterator until it reaches the target value.
 fn sumIterT(comptime T: type, iter: *T, target: i32) i32 {
-    const Iter = validate.ValidateWith(T, Iterable(T));
+    const Iter = validate.static(T, Iterable(T));
     var sum: i32 = 0;
     var curr: i32 = Iter.Target.next(iter);
     while (curr < target) : (curr = Iter.Target.next(iter)) {
@@ -65,7 +65,7 @@ test "sumIterT example" {
 /// It uses `Deref` function from utils to find out the type of the pointee.
 fn sumIter(iterRef: anytype, target: i32) i32 {
     const T = Deref(@TypeOf(iterRef));
-    const Iter = validate.ValidateWith(T, Iterable(T));
+    const Iter = validate.static(T, Iterable(T));
     var sum: i32 = 0;
     var curr: i32 = Iter.Target.next(iterRef);
     while (curr < target) : (curr = Iter.Target.next(iterRef)) {
@@ -76,7 +76,7 @@ fn sumIter(iterRef: anytype, target: i32) i32 {
 
 fn sumIterMerged(iterRef: anytype, target: i32) i32 {
     const T = Deref(@TypeOf(iterRef));
-    const Iter = validate.validateWithMerged(T, Iterable(T));
+    const Iter = validate.staticFnOverride(T, Iterable(T));
     var sum: i32 = 0;
     var curr: i32 = Iter.next(iterRef);
     while (curr < target) : (curr = Iter.next(iterRef)) {
@@ -101,7 +101,7 @@ test "sumIterMerged example" {
 /// It uses `Deref` function from utils to find out the type of the pointee.
 fn genericSumIter(iterRef: anytype, target: Deref(@TypeOf(iterRef)).Output) Deref(@TypeOf(iterRef)).Output {
     const Type = Deref(@TypeOf(iterRef));
-    const Iter = validate.ValidateWith(Type, Iterable(Type));
+    const Iter = validate.static(Type, Iterable(Type));
     var sum: Type.Output = 0;
     var curr: Type.Output = Iter.Target.next(iterRef);
     while (curr < target) : (curr = Iter.Target.next(iterRef)) {
@@ -112,7 +112,7 @@ fn genericSumIter(iterRef: anytype, target: Deref(@TypeOf(iterRef)).Output) Dere
 
 fn genericSumIterMerged(iterRef: anytype, target: Deref(@TypeOf(iterRef)).Output) Deref(@TypeOf(iterRef)).Output {
     const Type = Deref(@TypeOf(iterRef));
-    const iter = validate.validateWithMerged(Type, Iterable(Type));
+    const iter = validate.staticFnOverride(Type, Iterable(Type));
     var sum: Type.Output = 0;
     var curr: Type.Output = iter.next(iterRef);
     while (curr < target) : (curr = iter.next(iterRef)) {
@@ -154,7 +154,7 @@ const ConcreteIterable = struct {
 };
 
 test "Concrete Validator" {
-    const Iter = validate.ValidateWith(ConcreteIterableInt, ConcreteIterable);
+    const Iter = validate.static(ConcreteIterableInt, ConcreteIterable);
     var iter = ConcreteIterableInt{ .current = 1 };
     try std.testing.expect(Iter.Target.next(&iter) == 2);
     try std.testing.expect(Iter.Target.concrete(&iter) == 4);
@@ -162,7 +162,7 @@ test "Concrete Validator" {
 }
 
 test "Concrete Validator Merged" {
-    const iface = validate.validateWithMerged(ConcreteIterableInt, ConcreteIterable);
+    const iface = validate.staticFnOverride(ConcreteIterableInt, ConcreteIterable);
     var iter = ConcreteIterableInt{ .current = 1 };
     try std.testing.expect(iface.next(&iter) == 2);
     try std.testing.expect(iface.concrete(&iter) == 4);
@@ -184,7 +184,7 @@ const Addablei32 = packed struct {
 
 test "other" {
     const a = Addablei32{ .val = 3 };
-    const Add = validate.ValidateWith(Addablei32, Addable(Addablei32));
+    const Add = validate.static(Addablei32, Addable(Addablei32));
     _ = Add.Target.add(a, Addablei32{ .val = 4 });
 }
 
@@ -211,7 +211,7 @@ test "Example Validation" {
 
         /// Example function that takes a type conforming to `ExampleValidator`
         pub fn example(val: anytype) void {
-            const Ex = validate.ValidateWith(@TypeOf(val), ExampleValidator(@TypeOf(val)));
+            const Ex = validate.static(@TypeOf(val), ExampleValidator(@TypeOf(val)));
             _ = Ex.Target.magic(val, 3, 4, 2.2);
             _ = Ex.Target.wonder("Farquad", &[_]usize{ 4, 10, 13 });
         }
@@ -235,7 +235,7 @@ test "Inline Validator" {
         };
         /// Example function that takes a type conforming to an inline validator.
         pub fn example(val: anytype) void {
-            const Ex = validate.ValidateWith(@TypeOf(val), struct {
+            const Ex = validate.static(@TypeOf(val), struct {
                 pub const succ = (fn (@This()) @This());
                 pub const value = (fn (@This()) i32);
             });
@@ -288,7 +288,7 @@ test "Function Overloading" {
         };
     };
 
-    const iface = validate.validateWithMerged(Inline.Human, Inline.Animal(Inline.Human));
+    const iface = validate.staticFnOverride(Inline.Human, Inline.Animal(Inline.Human));
     var hooman = Inline.Human{ .name = "Bob", .age = 21 };
     try std.testing.expectEqualStrings(iface.getName(&hooman), "Bob");
     try std.testing.expectEqual(iface.getAge(&hooman), 21);
@@ -313,7 +313,7 @@ test "Dynamic Dispatch" {
         };
 
         const Human = struct {
-            animal: Animal = validate.utils.vtableify(Animal, AnimalImpl),
+            animal: Animal = validate.dynamic(Animal, AnimalImpl),
             age: usize,
             name: []const u8,
 
@@ -334,7 +334,7 @@ test "Dynamic Dispatch" {
         };
 
         const Dog = struct {
-            animal: Animal = validate.utils.vtableify(Animal, AnimalImpl),
+            animal: Animal = validate.dynamic(Animal, AnimalImpl),
             age: usize,
             name: []const u8,
 

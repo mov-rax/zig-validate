@@ -13,7 +13,24 @@ pub fn Deref(comptime Type: type) type {
 
 /// Extracts declarations from a type and outputs a slice of `types.TypeStruct` that
 /// contain both the name of the declaration and its `std.builtin.Type` information.
-pub fn extract(comptime T: type, comptime isValidator: bool) []const types.TypeStruct {
+pub fn extract(comptime T: type, comptime info: enum { validator, target, vtable }) []const types.TypeStruct {
+
+    // extraction of fields is a straightforward mapping of StructField to types.TypeStruct
+    if (info == .vtable) { 
+        var fields = std.meta.fields(T);
+        var result: []const types.TypeStruct = &.{};
+        inline for (fields) |f| {
+            if (@typeInfo(f.field_type) != .Pointer) {
+                @compileError("VTable fields are only allowed to be `*const` function pointers.");
+            }
+            result = result ++ &[_]types.TypeStruct{.{
+                .name = f.name,
+                .info = @typeInfo(Deref(f.field_type)), // deref so that it works with assertIsConforming
+            }};
+        }
+        return result;
+    }
+
     var decls = std.meta.declarations(T);
     var declNames: []const u8 = "";
 
@@ -28,7 +45,7 @@ pub fn extract(comptime T: type, comptime isValidator: bool) []const types.TypeS
     while (iter.next()) |i| {
         result = result ++ &[_]types.TypeStruct{.{
             .name = i,
-            .info = if (isValidator) blk: { // if the decl is a type, add it, otherwise continue.
+            .info = if (info == .validator) blk: { // if the decl is a type, add it, otherwise continue.
                 if (@TypeOf(@field(T, i)) == type) {
                     break :blk @typeInfo(@field(T, i));
                 } else continue;
