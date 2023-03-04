@@ -1,21 +1,43 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn build(b: *std.build.Builder) void {
-    // Standard release options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-    const mode = b.standardReleaseOptions();
+    
+    comptime {
+        const current_zig = builtin.zig_version;
+        const min_zig = std.SemanticVersion.parse("0.11.0-dev.1836+28364166e") catch return;
+        if (current_zig.order(min_zig) == .lt) {
+            @compileError(std.fmt.comptimePrint("Your zig version ({}) does not meet the minimum requirement ({}) to run zig-validate.", .{current_zig, min_zig}));
+        }
+    }
 
-    const lib = b.addStaticLibrary("zig-validate", "src/validate.zig");
-    lib.setBuildMode(mode);
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const lib = b.addStaticLibrary(.{
+        .name = "zig-validate",
+        .root_source_file = .{.path = "src/validate.zig"},
+        .target = target,
+        .optimize = optimize,
+        .version = .{
+            .major = 0,
+            .minor = 1,
+            .patch = 0,
+        },
+    });
     lib.install();
 
-    const validate_tests = b.addTest("src/validateTests.zig");
-    validate_tests.setBuildMode(mode);
+    const validate_tests = b.addTest(.{
+        .name = "validate tests",
+        .root_source_file = .{.path = "src/validateTests.zig"}
+    });
 
     const test_step = b.step("test", "Run library tests");
     test_step.dependOn(&validate_tests.step);
 
-    const docs = b.addTest("src/lib.zig");
+    const docs = b.addTest(.{
+        .name = "docs",
+        .root_source_file = .{.path = "src/lib.zig"}});
     docs.emit_docs = .emit;
 
     const docs_step = b.step("docs", "Generate docs");

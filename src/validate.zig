@@ -1,6 +1,7 @@
 const std = @import("std");
 const ansi = @import("ansi.zig");
 pub const utils = @import("utils.zig");
+pub const defaults = @import("defaults.zig");
 
 /// ### Comptime validation of `Target` type by a `Validator` Type.
 /// #### Returns a type containing decls from both types.
@@ -57,13 +58,25 @@ pub fn static(comptime Target: type, comptime Validator: type) genStruct(Target,
         }
         if (errors.len != 0) {
             var res: []const u8 = std.fmt.comptimePrint(target("`{s}`") ++ normal(" does not conform to ") ++ validator("`{s}`") ++ "\n", .{ @typeName(Target), @typeName(Validator) });
-            for (errors) |err, i| {
+            for (errors, 0..) |err, i| {
                 res = res ++ target(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
             }
             @compileError(res);
         }
         return genStruct(Target, Validator){};
     }
+}
+
+pub fn wrapped(comptime Target: type, comptime wrappers: []const defaults.DefaultWrappers) type {
+    for (wrappers) |w| {
+        if (w.Type.checkType(Target))
+            return w.Wrapper(Target);
+    }
+    return Target;
+}
+
+pub fn static2(comptime Target: type, comptime Validator: type, comptime wrappers: []const defaults.DefaultWrappers) genStruct(wrapped(Target, wrappers), Validator) {
+    return static(wrapped(Target, wrappers), Validator);
 }
 
 /// Similar to ValidateWith, however with the following additions/changes:
@@ -92,7 +105,7 @@ pub fn dynamic(comptime VTable: type, comptime Implementation: type) VTable {
         }
         if (errors.len != 0) {
             var res: []const u8 = std.fmt.comptimePrint(impl("`{s}`") ++ normal(" does not conform to ") ++ vt("`{s}`") ++ "\n", .{ @typeName(Implementation), @typeName(VTable) });
-            for (errors) |err, i| {
+            for (errors, 0..) |err, i| {
                 res = res ++ impl(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
             }
             @compileError(res);
@@ -123,7 +136,7 @@ pub fn staticTesting(comptime Target: type, comptime Validator: type) Validation
         }
         if (errors.len != 0) {
             var res: []const u8 = std.fmt.comptimePrint(target("`{s}`") ++ normal(" does not conform to ") ++ validator("`{s}`") ++ "\n", .{ @typeName(Target), @typeName(Validator) });
-            for (errors) |err, i| {
+            for (errors, 0..) |err, i| {
                 res = res ++ target(std.fmt.comptimePrint("{}:", .{i + 1})) ++ "\n" ++ err.desc ++ "\n";
             }
             return .{ .err = res };

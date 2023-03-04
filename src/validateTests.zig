@@ -368,3 +368,9 @@ test "Dynamic Dispatch" {
         Inline.testy(animal);
     }
 }
+
+// test "wrappers" {
+//     const Inline = struct{
+
+//     };
+// }
