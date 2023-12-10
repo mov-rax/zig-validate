@@ -25,7 +25,7 @@ pub fn build(b: *std.build.Builder) void {
             .patch = 0,
         },
     });
-    lib.install();
+    b.installArtifact(lib);
 
     const validate_tests = b.addTest(.{
         .name = "validate tests",
@@ -35,11 +35,12 @@ pub fn build(b: *std.build.Builder) void {
     const test_step = b.step("test", "Run library tests");
     test_step.dependOn(&validate_tests.step);
 
-    const docs = b.addTest(.{
-        .name = "docs",
-        .root_source_file = .{.path = "src/lib.zig"}});
-    docs.emit_docs = .emit;
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = lib.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "docs"
+    });
 
     const docs_step = b.step("docs", "Generate docs");
-    docs_step.dependOn(&docs.step);
+    docs_step.dependOn(&install_docs.step);
 }
