@@ -13,14 +13,14 @@ pub const Color = enum(u8) {
     pub fn foreground(self: @This()) [2]u8 {
         var val: [2]u8 = undefined;
         val[0] = '3';
-        val[1] = '0' + @enumToInt(self);
+        val[1] = '0' + @intFromEnum(self);
         return val;
     }
 
     pub fn background(self: @This()) [2]u8 {
         var val: [2]u8 = undefined;
         val[0] = '4';
-        val[1] = '0' + @enumToInt(self);
+        val[1] = '0' + @intFromEnum(self);
         return val;
     }
 };
@@ -37,7 +37,7 @@ pub const Mode = enum(u8) {
     strikethrough = 9,
     pub fn set(self: @This()) [1]u8 {
         var val: [1]u8 = undefined;
-        val[0] = '0' + @enumToInt(self);
+        val[0] = '0' + @intFromEnum(self);
         return val;
     }
 };

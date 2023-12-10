@@ -158,7 +158,7 @@ pub fn genFunctionStr(comptime req: types.TypeStruct, comptime errParamsTypes: [
         // Pipes and descriptive error lines.
         {
             var i: isize = 0; // start at first erroneous type.
-            var j: isize = @intCast(isize, numberOfDescLines - 1); // start at topmost descriptive error line.
+            var j: isize = @as(isize, @intCast(numberOfDescLines - 1)); // start at topmost descriptive error line.
             while (j >= 0) {
                 var lastLeft: usize = 0;
                 var counter: usize = 0;

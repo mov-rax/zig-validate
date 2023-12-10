@@ -4,7 +4,7 @@
 
 ---
 
-> Note: minimum zig version 0.10.0 using the stage2 compiler is required to use zig-validate.
+> Note: minimum zig version 0.12.0 is required to use zig-validate.
 
 For many projects, the desired method of creating generic types is to do either of the following:
 
